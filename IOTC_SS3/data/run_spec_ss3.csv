@@ -1,0 +1,6 @@
+Run,Model,Year,CAA,PCAA,CPUE,Pwaa,waa,sr_param(steep),lambda
+1,SWO,1950-2015,CAA2012.csv,PCAA2012.csv,CPUE2012.csv,waa2012.csv,fecaa2012.csv,75,
+1,YFT,1950-2016,CAA2012.csv,PCAA2012.csv,CPUE2012.csv,waa2012.csv,fecaa2012.csv,80,1
+1,BET,1975-2016,CAA2012.csv,PCAA2012.csv,CPUE2012.csv,waa2012.csv,fecaa2012.csv,70,0.1
+2,BET,1975-2016,CAA2012.csv,PCAA2012.csv,CPUE2012.csv,waa2012.csv,fecaa2012.csv,80,0.1
+3,BET,1975-2016,CAA2012.csv,PCAA2012.csv,CPUE2012.csv,waa2012.csv,fecaa2012.csv,90,0.1
