@@ -23,16 +23,15 @@ RUN apt-get update && apt-get install -y \
 	netcdf-doc
 
 # install dependencies of the BFT-E app
-RUN R -e "install.packages(c('devtools','shiny','stringr','DT','RCurl','XML','plyr','reshape','ncdf4','rmarkdown','LBSPR','reshape2','ReporteRs','ggplot2','ReporteRsjars'), repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages(c('devtools','shiny','stringr','r4ss','DT','pacman','RCurl','XML','plyr','reshape','ncdf4','rmarkdown','LBSPR','reshape2','ReporteRs','ggplot2','ReporteRsjars'), repos='https://cloud.r-project.org/')"
 
 RUN R -e "devtools::install_github('ramnathv/rCharts')"
 
 # copy the app to the image
-RUN mkdir /root/BFT
-COPY BFT /root/BFT
-
+RUN mkdir /root/IOTC_SS3
+COPY IOTC_SS3 /root/IOTC_SS3
 COPY Rprofile.site /usr/lib/R/etc/
 
 EXPOSE 3838
 
-CMD ["R", "-e shiny::runApp('/root/BFT')"]
+CMD ["R", "-e rmarkdown::render('/root/IOTC_SS3/ss3_dashboard_final.rmd')"]
