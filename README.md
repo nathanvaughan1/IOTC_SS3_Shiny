@@ -3,7 +3,7 @@ the IOTC_SS3 app is hosted at
 https://github.com/aenieblas/IOTC_SS3_Shiny
 
 The docker image hosted at 
-https://hub.docker.com/r/nathanvaughan/shinyproxy-IOTC_SS3/
+https://hub.docker.com/r/nathanvaughan/shinyproxy-iotc_ss3/
 
 it is automaticaly built from the shiny app repository hosted at  
 https://github.com/nathanvaughan1/IOTC_SS3_Shiny
@@ -18,4 +18,4 @@ display-name: IOTC_SS3 shiny app
 
 docker-cmd: ["R", "-e rmarkdown::render('/root/IOTC_SS3/ss3_dashboard_final.rmd')"]
 
-docker-image: nathanvaughan/shinyproxy-IOTC_SS3
+docker-image: nathanvaughan/shinyproxy-iotc_ss3
