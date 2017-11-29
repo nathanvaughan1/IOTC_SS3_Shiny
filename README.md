@@ -16,6 +16,6 @@ name: IOTC_SS3
 
 display-name: IOTC_SS3 shiny app
 
-docker-cmd: ["R", "-e rmarkdown::render('/root/IOTC_SS3/ss3_dashboard_final.rmd')"]
+docker-cmd: ["R", "-e rmarkdown::run('/root/IOTC_SS3/ss3_dashboard_final.Rmd')"]
 
 docker-image: nathanvaughan/shinyproxy-iotc_ss3
