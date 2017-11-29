@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y \
 	netcdf-doc
 
 # install dependencies of the IOTC_SS3 app
-RUN R -e "install.packages(c('devtools','shiny','stringr','r4ss','flexdashboard','DT','pacman','RCurl','XML','plyr','reshape','ncdf4','rmarkdown','LBSPR','reshape2','ReporteRs','ggplot2','ReporteRsjars'), repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages(c('devtools','shiny','stringr','r4ss','flexdashboard','DT','pacman','RCurl','XML','plotly','plyr','reshape','ncdf4','rmarkdown','LBSPR','reshape2','ReporteRs','ggplot2','ReporteRsjars'), repos='https://cloud.r-project.org/')"
 
 RUN R -e "devtools::install_github('ramnathv/rCharts')"
 
