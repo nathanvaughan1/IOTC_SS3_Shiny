@@ -1,66 +1,43 @@
 ---
 title: "SS3 Diagnostic Plots"
-output: 
-  flexdashboard::flex_dashboard
+resource_files:
+- Rscripts/helper_functions_SS3.R
+- data/run_spec_ss3.csv
+- data/data_ss324_SWO_1.nc
+- data/data_ss324_YFT_1.nc
+- data/data_ss324_BET_1.nc
+- data/data_ss324_BET_2.nc
+- data/data_ss324_BET_3.nc
 runtime: shiny
+output: flexdashboard::flex_dashboard
 ---
 
 
 ```{r global, include=FALSE}
 
-
-############### DEFINE MAIN DIRECTORIES ###############
-##rm(list=ls())
-##username <- "anne.elise.nieblas"
-##token <- "a563a139-397a-41c0-8d48-765a881ddcfb-843339462"
-##source("http://svn.research-infrastructures.eu/public/d4science/gcube/trunk/data-analysis/RConfiguration/RD4SFunctions/workspace_interaction.r")
-
-##home_dir <-paste("/home/",username,"/",sep="")
-##setwd(home_dir)
-##SS3_dir="SS3"
-##directories=c(SS3_dir,"any_folder")
-##unlink(directories, recursive = TRUE)
-
-## CREATE REPOSITORIES IN RSTUDIO 
-##if (file.exists(SS3_dir)){
-##  setwd(file.path(home_dir, SS3_dir))
-##} else {
-##  dir.create(file.path(home_dir, SS3_dir))
-##  setwd(file.path(home_dir, SS3_dir))
-##}
-
-# remote folder to download
-##folderss<-paste("/Home/",username,"/Workspace/IOTC_SS3_Shiny/",sep="") 
-# download the folder content locally
-##downloadFolderWS(folderss) 
-##setwd(paste(home_dir,SS3_dir,"/IOTC_SS3_Shiny",sep=""))
+options(shiny.sanitize.errors = FALSE)
 
 dirMain <-getwd()
-
 dirRScripts <- paste(dirMain,"/Rscripts/",sep='')
 
 # parameter and run/seed info
 dirWS    <- paste(dirMain, "/data/", sep="")
-# dirData    <- paste(dirMain, "/data/", sep="")
-dirData <-"http://mdst-macroes.ird.fr:8080/thredds/dodsC/BlueBridge/IOTC/"
+dirData    <- paste(dirMain, "/data/", sep="")
+# dirData <-"http://mdst-macroes.ird.fr:8080/thredds/dodsC/BlueBridge/IOTC/"
 #######################################################
 
 ########### SOURCE LIBRARIES AND FUNCTIONS ############
-# library(shiny)
-# require(rCharts)
-# library(plyr)
-# # library(r4ss)
-# library(reshape)
-# library(ggplot2)
-# library(ncdf4)
-
-# devtools::install_github('hadley/ggplot2')
-if(!require("pacman")) install.packages("pacman")
-library(pacman)
-p_load(shiny, rCharts, plyr, reshape2, ggplot2, ncdf4, flexdashboard, plotly)
+library(shiny)
+require(rCharts)
+library(plyr)
+# library(r4ss)
+library(reshape2)
+library(ggplot2)
+library(ncdf4)
+library(flexdashboard)
+library(plotly)
 
 
-# source(paste(dirRScripts,'plot_outputs_SS3.R',sep=''))
 run_parameters <- read.csv(paste(dirWS, "run_spec_ss3.csv", sep=""))
 r_seed <- 1
 #######################################################
@@ -82,7 +59,7 @@ source(paste(dirRScripts,'helper_functions_SS3.R',sep=''))
   SSB_plot <- reactive({read_SSB_data(paste(input$Model),input$Run,dir_save=paste(dirData,sep=''))})
 ## extract Total biomass data from .nc files - Biomass_all_ts
   Bio_plot <- reactive({read_Bio_data(paste(input$Model),input$Run,dir_save=paste(dirData,sep=''))})
-## extract Total biomass data from .nc files - Biomass_all_ts
+## extract F/Fmsy data from .nc files - FFmsy
   FFMSY_plot <- reactive({read_ffmsy_data(paste(input$Model),input$Run,dir_save=paste(dirData,sep=''))})
 ## extract size selectivity data from .nc files - sizeselex
   Ssel_plot <- reactive({read_Ssel_data(paste(input$Model),input$Run,dir_save=paste(dirData,sep=''))})
@@ -483,13 +460,3 @@ ggplotly(p)
 })
 ```
 
-```{r}
-# ##### RELOADS UPDATED ss3.24.R to INFRASTRUCTURE ####
-# overwrite<-T #SET TO "TRUE" IF THE FILES ALREADY ON THE WORKSPACE SHOULD BE OVERWRITTEN
-# outputs_WS <- paste("/Home",username,"Workspace/IOTC_SS3_Shiny/",sep="/")
-# listWS(outputs_WS) #GET THE LIST OF FILES AND FOLDERS IN ONE SUB-FOLDER
-# shiny_SS3=paste('/home/anne.elise.nieblas/SS3/IOTC_SS3_Shiny/ss3_dashboard_final.Rmd',sep='') # FILE WITH THE FUNCTION TO WRITE OGC 19115 metadata
-# uploadWS(outputs_WS,shiny_SS3,overwrite)
-# #####################################################
-
-```

@@ -254,13 +254,13 @@ for_ncSsel <- function(x, dir_save){
   end_yr<-end_yr$model_end_year
   
   ## MUST PARSE UNITS STRING INTO VALUES
-  xx=nc$dim$size.factor$units
+  xx=nc$dim$size_factor$units
   xx.val=strsplit(xx,' ')
   xx.vals=strsplit(xx.val[[1:length(xx.val)]],':')
-  size.vals<-NULL
-  for(x in 1:length(xx.vals)){size.vals=c(size.vals,xx.vals[[x]][2])}
+  size_vals<-NULL
+  for(x in 1:length(xx.vals)){size_vals=c(size_vals,xx.vals[[x]][2])}
   
-  dims        <- list(nc$dim$fleet$vals,nc$dim$year$vals,nc$dim$gender$vals,size.vals,nc$dim$sizeselex.size$vals)
+  dims        <- list(nc$dim$fleet$vals,nc$dim$year$vals,nc$dim$gender$vals,size_vals,nc$dim$sizeselex_size$vals)
   coldims     <- c('Fleet','Year','Gender','Factor','Size')
   dr          <- NULL
   for(d in 1:length(dims)){if(length(dims[[d]])==1){dr=c(dr,d)}}
