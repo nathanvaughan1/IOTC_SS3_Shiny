@@ -3,11 +3,6 @@ title: "SS3 Diagnostic Plots"
 resource_files:
 - Rscripts/helper_functions_SS3.R
 - data/run_spec_ss3.csv
-- data/data_ss324_SWO_1.nc
-- data/data_ss324_YFT_1.nc
-- data/data_ss324_BET_1.nc
-- data/data_ss324_BET_2.nc
-- data/data_ss324_BET_3.nc
 runtime: shiny
 output: flexdashboard::flex_dashboard
 ---
@@ -22,8 +17,8 @@ dirRScripts <- paste(dirMain,"/Rscripts/",sep='')
 
 # parameter and run/seed info
 dirWS    <- paste(dirMain, "/data/", sep="")
-dirData    <- paste(dirMain, "/data/", sep="")
-# dirData <-"http://mdst-macroes.ird.fr:8080/thredds/dodsC/BlueBridge/IOTC/"
+# dirData    <- paste(dirMain, "/data/", sep="")
+dirData <-"http://mdst-macroes.ird.fr:8080/thredds/dodsC/BlueBridge/IOTC/"
 #######################################################
 
 ########### SOURCE LIBRARIES AND FUNCTIONS ############

@@ -12,9 +12,9 @@ and will be updated if this repository is edited.
 
 Additional shiny proxy information
     
-name: IOTC_SS3
+name: SS3 Diagnostic Plots
 
-display-name: IOTC_SS3 shiny app
+display-name: SS3 Diagnostic Plots
 
 docker-cmd: ["R", "-e rmarkdown::run('/root/IOTC_SS3/ss3_dashboard_final.Rmd')"]
 

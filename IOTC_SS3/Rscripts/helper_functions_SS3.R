@@ -1,5 +1,5 @@
 ## helper_functions_SS3.R
-## Anne-Elise Nieblas (adapted from Sylvain Bonhommeau)
+## Anne-Elise Nieblas (adapted from helper_functions.R by Sylvain Bonhommeau)
 ## 6/10/2017
 ## DESCRIPTION: This script is read by app.R for the IOTC_SS3 shiny. It loads the ss3 .nc model outputs, 
 ## melts the .nc arrays into data frames, adds/calculates new variables and assigns colnames.
@@ -8,10 +8,9 @@
 ##          LEN  data frame (Fleet, Year, Bin, Exp, Obs)
 ##          
 ## AEN TO DO:
-## IMPROVEMENTS: Have to have different functions ?- can put them all together to load data once?
+## IMPROVEMENTS: Have to have different functions ?- can put more of them together to load data less often?
 ##               Not all dimensions are necessarily accounted for in column naming, e.g., SEASON!
-##                make function to replace single dims.
-##               ## MUST PARSE UNITS STRING INTO VALUES
+
 
 
 # paste(dirData,'data_ss324_',input$Model,'_',input$Run,'.nc',sep='')
