@@ -2,7 +2,6 @@
 title: "SS3 Diagnostic Plots"
 resource_files:
 - Rscripts/helper_functions_SS3.R
-- data/run_spec_ss3.csv
 runtime: shiny
 output: flexdashboard::flex_dashboard
 ---
@@ -16,7 +15,8 @@ dirMain <-getwd()
 dirRScripts <- paste(dirMain,"/Rscripts/",sep='')
 
 # parameter and run/seed info
-dirWS    <- paste(dirMain, "/data/", sep="")
+dirWS <- "http://data.d4science.org/bFZEb255ZkJia0NnbSs4U053dE9SVEh3MFNUbjFmN3BHbWJQNStIS0N6Yz0"
+# dirWS    <- paste(dirMain, "/data/", sep="")
 # dirData    <- paste(dirMain, "/data/", sep="")
 dirData <-"http://mdst-macroes.ird.fr:8080/thredds/dodsC/BlueBridge/IOTC/"
 #######################################################
@@ -32,8 +32,9 @@ library(ncdf4)
 library(flexdashboard)
 library(plotly)
 
+run_parameters <- read.csv(dirWS)
 
-run_parameters <- read.csv(paste(dirWS, "run_spec_ss3.csv", sep=""))
+# run_parameters <- read.csv(paste(dirWS, "run_spec_ss3.csv", sep=""))
 r_seed <- 1
 #######################################################
 
@@ -66,13 +67,13 @@ CPUE
 Column {.sidebar}
 -----------------------------------------------------------------------
 
-Compare observations against the predictions of selected SS3 model(s) for CPUE. 
+Compare observations (black) against the predictions (colored) of selected SS3 model/run(s) for CPUE. 
   
   **Please select your model/run(s) HERE. **
 
 ```{r}
 selectizeInput(inputId='Model',label='Select from the species models currently available',
-              choices=c('SWO','YFT','BET','SKJ','BFT'),selected='SWO',multiple = FALSE)
+              choices=as.character(unique(run_parameters$Model)),selected='SWO',multiple = FALSE)
   selectInput(inputId='RunMode',label='Select one or multiple runs to visualize',
                  choices=c('One', 'Multiple'),selected='One',multiple = FALSE)
   conditionalPanel(condition  = "input.RunMode == 'Multiple'",
@@ -134,7 +135,7 @@ Size Frequency
 Column {.sidebar}
 -----------------------------------------------------------------------
 
-Size frequency by fleet, including mean aggregated length frequency, mean length distribution, and mean weight distribution.
+Size frequency by fleet, including mean aggregated length frequency (cm), mean length distribution (cm), and mean weight distribution (kg).
   
 **Please select your model/run(s) from the first page (CPUE).**
 
@@ -150,7 +151,7 @@ renderPlotly({
     
     p <- ggplot(forLen, aes(x=Bin, y=Obs))
     p <- p+geom_bar(stat="identity")+facet_wrap(~Fleet, ncol=3, scales="free")+
-      geom_line(aes(y=Exp,colour=Model_run),size=1.3)#+ 
+      geom_line(aes(y=Exp,colour=Model_run),size=1.3)+ylab('Observations')+xlab('Length bin (cm)')#+ 
       # ggtitle("Aggregated length frequency")
     ggplotly(p)
     ##########################################################################
@@ -167,7 +168,7 @@ renderPlotly({
                                                                            Exp=weighted.mean(x=x$Bin, w=x$Exp) ))
     p <- ggplot(forLen2, aes(x=Year, y=Obs))
     p <- p+geom_point()+geom_line(col="black")+geom_line(aes(y=Exp,colour=Model_run),size=1.3)+
-      facet_wrap(~Fleet,scales = 'free', ncol=3)
+      facet_wrap(~Fleet,scales = 'free', ncol=3)+ylab('Length (cm)')
     ggplotly(p)
     #+ 
       # ggtitle("Mean Length Distribution")
@@ -184,7 +185,7 @@ renderPlotly({
     forLenWeight <- ddply(na.exclude(LEN2plot), .(Fleet,Year,Model_run), function(x) data.frame(Obs=3.815e-006*(weighted.mean(x=x$Bin, w=x$Obs))^3.188,                                                     Exp= 3.815e-006*(weighted.mean(x=x$Bin, w=x$Exp))^3.188 ))
     p <- ggplot(forLenWeight, aes(x=Year, y=Obs))
     p <- p+geom_point()+geom_line(col="black")+geom_line(aes(y=Exp,colour=Model_run),size=1.3)+
-      facet_wrap(~Fleet, scales='free',ncol=3)
+      facet_wrap(~Fleet, scales='free',ncol=3)+ylab('Weight (kg)')
     ggplotly(p)
     #+ 
       # ggtitle("Mean Weight Distribution")
@@ -361,7 +362,7 @@ Recruitment
 ===================================== 
 Column {.sidebar}
 -----------------------------------------------------------------------
-Compare observations against the predictions of selected SS3 model(s) for recruitment deviation, recruitment (x1000) by area, and summed over area  (x1000). 
+Compare observations against the predictions of selected SS3 model(s) for recruitment deviation, recruitment (millions) by area, and summed over area  (millions). 
   
 **Please select your model/run(s) from the first page (CPUE).**
   
@@ -404,7 +405,7 @@ renderPlotly({
   forR0<-forR0[zeros,]
 
   p <- ggplot(forR0, aes(x=Year, y=rec0,colour=Model_run))
-  p <- p+geom_line(stat="identity",size=1.3)+facet_wrap(~Area, ncol=2)+ylab('Recruit 0 (x1000)')
+  p <- p+geom_line(stat="identity",size=1.3)+facet_wrap(~Area, ncol=2)+ylab('Recruit 0 (millions)')
   ggplotly(p)
   ##########################################################################
 })
@@ -423,7 +424,7 @@ renderPlotly({
   forR0<-forR0[zeros,]
 
   p <- ggplot(forR0, aes(x=Year, y=rec0,colour=Model_run))
-  p <- p+geom_line(stat="identity",size=1.3)+ylab('Recruit 0 (x1000)')
+  p <- p+geom_line(stat="identity",size=1.3)+ylab('Recruit 0 (millions)')
   ggplotly(p)
   ##########################################################################
 })
@@ -433,7 +434,7 @@ Selectivity
 ===================================== 
 Column {.sidebar}
 -----------------------------------------------------------------------
-Size and age selectivity. Size selectivity by fleet defined as "Lsel" in 2015.
+Size and age selectivity. Size selectivity by fleet defined as "Lsel" (cm)  in the latest year of the assessment.
 
 **Please select your model/run(s) from the first page (CPUE).**
 
@@ -449,7 +450,7 @@ renderPlotly({
   }else{forSize <- ddply(na.exclude(Sselplot), .(Fleet,Size,Model_run),
                  function(x) data.frame(x[x$Factor=="Lsel" & x$Year==x$endyr,]))}
   p <- ggplot(forSize, aes(x=Size, y=sel,colour=Model_run))
-p <- p+geom_line(stat="identity",size=1.3)+facet_wrap(~Fleet, ncol=5, scales="free")#+
+p <- p+geom_line(stat="identity",size=1.3)+facet_wrap(~Fleet, ncol=5, scales="free")+xlab('Length (cm)')+ylab('Proportion')#+
 ggplotly(p)
   ##########################################################################
 })

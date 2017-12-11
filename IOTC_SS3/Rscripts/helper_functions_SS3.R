@@ -64,8 +64,8 @@ for_ncLEN <- function(x, dir_save){
   lobs        <-melt(Lobs)
   Lexp        <-ncvar_get(nc,'Exp_len')
   lexp        <-melt(Lexp)
-  Len         <-cbind(lexp,lobs$value)
-  colnames(Len)<-c(coldims,'Exp','Obs')
+  Len         <-cbind(lobs,lexp$value)
+  colnames(Len)<-c(coldims,'Obs','Exp')
   
   LEN_data    <-Len
   return(LEN_data)
