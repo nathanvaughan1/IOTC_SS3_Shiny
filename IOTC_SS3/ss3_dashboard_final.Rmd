@@ -6,7 +6,6 @@ runtime: shiny
 output: flexdashboard::flex_dashboard
 ---
 
-
 ```{r global, include=FALSE}
 
 options(shiny.sanitize.errors = FALSE)
@@ -15,17 +14,16 @@ dirMain <-getwd()
 dirRScripts <- paste(dirMain,"/Rscripts/",sep='')
 
 # parameter and run/seed info
-dirWS <- "http://data.d4science.org/bFZEb255ZkJia0NnbSs4U053dE9SVEh3MFNUbjFmN3BHbWJQNStIS0N6Yz0"
+dirWS <- "https://goo.gl/mo1Tz7"
 # dirWS    <- paste(dirMain, "/data/", sep="")
 # dirData    <- paste(dirMain, "/data/", sep="")
-dirData <-"http://mdst-macroes.ird.fr:8080/thredds/dodsC/BlueBridge/IOTC/"
+dirData <- "http://mdst-macroes.ird.fr:8080/thredds/dodsC/BlueBridge/IOTC/"
 #######################################################
 
 ########### SOURCE LIBRARIES AND FUNCTIONS ############
 library(shiny)
 require(rCharts)
 library(plyr)
-# library(r4ss)
 library(reshape2)
 library(ggplot2)
 library(ncdf4)
@@ -33,7 +31,6 @@ library(flexdashboard)
 library(plotly)
 
 run_parameters <- read.csv(dirWS)
-
 # run_parameters <- read.csv(paste(dirWS, "run_spec_ss3.csv", sep=""))
 r_seed <- 1
 #######################################################
@@ -54,46 +51,41 @@ source(paste(dirRScripts,'helper_functions_SS3.R',sep=''))
 ## extract SSB data from .nc files - re0
   SSB_plot <- reactive({read_SSB_data(paste(input$Model),input$Run,dir_save=paste(dirData,sep=''))})
 ## extract Total biomass data from .nc files - Biomass_all_ts
-  Bio_plot <- reactive({read_Bio_data(paste(input$Model),input$Run,dir_save=paste(dirData,sep=''))})
+ Bio_plot <- reactive({read_Bio_data(paste(input$Model),input$Run,dir_save=paste(dirData,sep=''))})
 ## extract F/Fmsy data from .nc files - FFmsy
   FFMSY_plot <- reactive({read_ffmsy_data(paste(input$Model),input$Run,dir_save=paste(dirData,sep=''))})
 ## extract size selectivity data from .nc files - sizeselex
   Ssel_plot <- reactive({read_Ssel_data(paste(input$Model),input$Run,dir_save=paste(dirData,sep=''))})
-
+## extract age selectivity data from .nc files - ageselex
+  Asel_plot <- reactive({read_Asel_data(paste(input$Model),input$Run,dir_save=paste(dirData,sep=''))})
 ```
 
-CPUE
-===================================== 
-Column {.sidebar}
------------------------------------------------------------------------
-
-Compare observations (black) against the predictions (colored) of selected SS3 model/run(s) for CPUE. 
   
+Select input {.sidebar}
+===================================== 
   **Please select your model/run(s) HERE. **
 
 ```{r}
-selectizeInput(inputId='Model',label='Select from the species models currently available',
-              choices=as.character(unique(run_parameters$Model)),selected='SWO',multiple = FALSE)
-  selectInput(inputId='RunMode',label='Select one or multiple runs to visualize',
-                 choices=c('One', 'Multiple'),selected='One',multiple = FALSE)
-  conditionalPanel(condition  = "input.RunMode == 'Multiple'",
-                   selectizeInput(inputId  = 'Run',
-                                  label    = 'Choose the run(s) to plot',
-                                  choices  = as.character(run_parameters$Run),
-                                  selected = c(as.character(run_parameters$Run)[1],as.character(run_parameters$Run)[run_parameters$Run=="Run_1"]),
-                                  multiple = TRUE
-                                  )
-                   )
-  
-  conditionalPanel(condition  = "input.RunMode == 'One run'",
-                   selectInput(   inputId  = 'Run',
-                                  label    = 'Choose the run to plot',
-                                  choices  = as.character(run_parameters$Run),
-                                  selected = as.character(run_parameters$Run)[1]
-                   )
-                   )
- 
+selectInput(inputId='Model',
+               label='Select from the species models currently available',
+               choices=as.character(unique(run_parameters$Model)),
+               selected='SWO',
+               multiple = FALSE)
+output$selectUI <- renderUI({
+  selectInput("Run", 
+              label="Choose the run(s) to plot", 
+              choices =  as.character(run_parameters$Run[run_parameters$Model==input$Model]), 
+              # selected=as.character(run_parameters$Run[1]),
+              selected=as.character(run_parameters$Run[run_parameters$Model==input$Model][1]),
+              multiple=TRUE)
+})
+htmlOutput("selectUI")
 ```
+
+
+CPUE
+===================================== 
+Compare observations (black) against the predictions (colored) of selected SS3 model/run(s) for CPUE. 
 
 Column {.tabset}
 -----------------------------------------------------------------------
@@ -103,15 +95,14 @@ Column {.tabset}
 ```{r}
 renderPlotly({
     CPUE2plot <- CPUE_plot()
-    colour=input$Run
-      ## an entire plot code/script can go here!
     ############# CPUE FIT: OBSERVED V PREDICTED ###########
     p <- ggplot(na.exclude(CPUE2plot), aes(x=Year, y=Obs))
     p <- p+geom_point(size=0.7,col='black')+geom_line(col='black')+geom_line(aes(y=Exp, colour=Model_run))+
-      facet_wrap(~Fleet,ncol=2,scales='free_y')#+ggtitle("CPUE fit: Observed v Predicted")#as.numeric(as.character(input$Run)))  
+      facet_wrap(~Fleet,ncol=2,)#+scales='free_y'+ggtitle("CPUE fit: Observed v Predicted")#as.numeric(as.character(input$Run)))
     ggplotly(p)
-      ########################################################
+    ########################################################
   })
+
 ```
 
 ### Standardized CPUE residuals
@@ -127,17 +118,11 @@ renderPlotly({
     ggplotly(p)
     #################################################################
   })
-
 ```
 
 Size Frequency
 ===================================== 
-Column {.sidebar}
------------------------------------------------------------------------
-
 Size frequency by fleet, including mean aggregated length frequency (cm), mean length distribution (cm), and mean weight distribution (kg).
-  
-**Please select your model/run(s) from the first page (CPUE).**
 
 Column {.tabset}
 -----------------------------------------------------------------------
@@ -151,12 +136,11 @@ renderPlotly({
     
     p <- ggplot(forLen, aes(x=Bin, y=Obs))
     p <- p+geom_bar(stat="identity")+facet_wrap(~Fleet, ncol=3, scales="free")+
-      geom_line(aes(y=Exp,colour=Model_run),size=1.3)+ylab('Observations')+xlab('Length bin (cm)')#+ 
+      geom_line(aes(y=Exp,colour=Model_run))+ylab('Observations')+xlab('Length bin (cm)')#+ 
       # ggtitle("Aggregated length frequency")
     ggplotly(p)
     ##########################################################################
-    
-  })
+})
 ```
 
 ### Mean Length Distribution
@@ -167,11 +151,9 @@ renderPlotly({
     forLen2 <- ddply(na.exclude(LEN2plot), .(Fleet,Year,Model_run), function(x) data.frame(Obs=weighted.mean(x=x$Bin, w=x$Obs), 
                                                                            Exp=weighted.mean(x=x$Bin, w=x$Exp) ))
     p <- ggplot(forLen2, aes(x=Year, y=Obs))
-    p <- p+geom_point()+geom_line(col="black")+geom_line(aes(y=Exp,colour=Model_run),size=1.3)+
+    p <- p+geom_point()+geom_line(col="black")+geom_line(aes(y=Exp,colour=Model_run))+
       facet_wrap(~Fleet,scales = 'free', ncol=3)+ylab('Length (cm)')
     ggplotly(p)
-    #+ 
-      # ggtitle("Mean Length Distribution")
     ##########################################################################
 })
 
@@ -184,22 +166,17 @@ renderPlotly({
     ##################### MEAN LENGTH DISTRIBUTION ###########################
     forLenWeight <- ddply(na.exclude(LEN2plot), .(Fleet,Year,Model_run), function(x) data.frame(Obs=3.815e-006*(weighted.mean(x=x$Bin, w=x$Obs))^3.188,                                                     Exp= 3.815e-006*(weighted.mean(x=x$Bin, w=x$Exp))^3.188 ))
     p <- ggplot(forLenWeight, aes(x=Year, y=Obs))
-    p <- p+geom_point()+geom_line(col="black")+geom_line(aes(y=Exp,colour=Model_run),size=1.3)+
+    p <- p+geom_point()+geom_line(col="black")+geom_line(aes(y=Exp,colour=Model_run))+
       facet_wrap(~Fleet, scales='free',ncol=3)+ylab('Weight (kg)')
     ggplotly(p)
-    #+ 
-      # ggtitle("Mean Weight Distribution")
     ##########################################################################
   })
 ```
 
 Biomass
 ===================================== 
-Column {.sidebar}
------------------------------------------------------------------------
 Biomass figures, including total biomass (1000 t), depletion (%), and spawning stock biomass (SSB; 1000 t): by area and summed over areas.
   
-**Please select your model/run(s) from the CPUE page.**
 
 Column {.tabset}
 -----------------------------------------------------------------------
@@ -210,21 +187,30 @@ Column {.tabset}
 renderPlotly({
   Bioplot<-Bio_plot()
   ########################## TOTAL BIOMASS BY AREA ########################
-  ## AREA,YEAR,SEASON,ERA
   end_current_period=max(Bioplot$Year[Bioplot$Era=='TIME' & is.na(Bioplot$bio)==FALSE])
-  
+  # req(is.null(which(colnames(Bioplot)=='Area')))
+   if(length(intersect(colnames(Bioplot),'Area'))>0){ ## check that the model is multi-area
   forBA <- ddply(na.exclude(Bioplot), .(Area,Year,Model_run),
                  function(x) data.frame(bio=sum(x$bio[x$Era=="TIME"|x$Era=="FORE"],na.rm=T)/1000))
-  # forBA <- ddply(na.exclude(Bioplot), .(Area,Year),
-  #              function(x) data.frame(bio=sum(x$bio[x$Era==5|x$Era==1])/1000))
     forBA0<-forBA[which(forBA$bio>0),]
   
   p <- ggplot(forBA0, aes(x=Year, y=bio,colour=Model_run))
-  p <- p+geom_line(stat="identity",size=1.3)+facet_wrap(~Area, ncol=2)+ylab('Total Biomass (x1000 t)')+
+  p <- p+geom_line(stat="identity")+facet_wrap(~Area, ncol=2)+ylab('Total Biomass (x1000 t)')+
      geom_vline(xintercept = end_current_period,col="blue",linetype=2)
-  ggplotly(p)
+  ggplotly(p)  
+  
+  }else{  ## condition if single-area model, will plot total biomass
+    
+    forBAtot <- ddply(na.exclude(Bioplot), .(Year,Model_run),
+                      function(x) data.frame(bio=sum(x$bio[x$Era=="TIME"|x$Era=="FORE"],na.rm=T)/1000))
+    forBAtot0<-forBAtot[which(forBAtot$bio>0),]
+
+    p <- ggplot(forBAtot0, aes(x=Year, y=bio,colour=Model_run))
+    p <- p+geom_line(stat="identity")+ylab('Total Biomass (x1000 t)')+ylim(range(forBAtot$bio))+
+      geom_vline(xintercept = end_current_period,col="blue",linetype=2)+ggtitle('single-area model')
+    ggplotly(p)
+  }
   #########################################################################
- 
 })
 ```
 
@@ -236,17 +222,13 @@ renderPlotly({
   ########################## TOTAL BIOMASS (SUMMED OVER AREA) ########################
   forBAtot <- ddply(na.exclude(Bioplot), .(Year,Model_run),
                  function(x) data.frame(bio=sum(x$bio[x$Era=="TIME"|x$Era=="FORE"],na.rm=T)/1000))
-  # forBAtot <- ddply(na.exclude(Bioplot), .(Year), 
-  #                function(x) data.frame(bio=sum(x$bio[x$Era==5|x$Era==1])/1000))
-  
   forBAtot0<-forBAtot[which(forBAtot$bio>0),]
   
   p <- ggplot(forBAtot0, aes(x=Year, y=bio,colour=Model_run))
-  p <- p+geom_line(stat="identity",size=1.3)+ylab('Total Biomass (x1000 t)')+ylim(range(forBAtot$bio))+
+  p <- p+geom_line(stat="identity")+ylab('Total Biomass (x1000 t)')+ylim(range(forBAtot$bio))+
      geom_vline(xintercept = end_current_period,col="blue",linetype=2)
   ggplotly(p)
   #########################################################################
- 
 })
 ```
 
@@ -255,19 +237,30 @@ renderPlotly({
 renderPlotly({
   Bioplot<-Bio_plot()
   end_current_period=max(Bioplot$Year[Bioplot$Era=='TIME' & is.na(Bioplot$bio)==FALSE])
-  forBA <- ddply(na.exclude(Bioplot), .(Area,Year,Model_run),
+  
+  if(length(intersect(colnames(Bioplot),'Area'))>0){ 
+    forBA <- ddply(na.exclude(Bioplot), .(Area,Year,Model_run),
                  function(x) data.frame(bio=sum(x$bio[x$Era=="TIME"|x$Era=="FORE"],na.rm=T)/1000))
-  # forBA <- ddply(na.exclude(Bioplot), .(Area,Year), 
-  #                function(x) data.frame(bio=sum(x$bio[x$Era==5|x$Era==1])/1000))
   forBA0<-forBA[which(forBA$bio>0),]
   
   ######################## % DEPLETION BY AREA ############################
   p <- ggplot(forBA0, aes(x=Year, y=bio/bio[1]*100,colour=Model_run))
-  p <- p+geom_line(stat="identity",size=1.3)+facet_wrap(~Area, ncol=2)+ylab('Depletion (%)')+
+  p <- p+geom_line(stat="identity")+facet_wrap(~Area, ncol=2)+ylab('Depletion (%)')+
  geom_hline(yintercept=40,col='dark grey')+
      geom_vline(xintercept = end_current_period,col="blue",linetype=2)
   ggplotly(p)
   #########################################################################
+  }else{
+    forBAtot <- ddply(na.exclude(Bioplot), .(Year,Model_run), 
+                 function(x) data.frame(bio=sum(x$bio[x$Era=="TIME"|x$Era=="FORE"],na.rm=T)/1000))
+    forBAtot0<-forBAtot[which(forBAtot$bio>0),]
+  
+  p <- ggplot(forBAtot0, aes(x=Year, y=bio/bio[1]*100,colour=Model_run))
+  p <- p+geom_line(stat="identity")+ylab('Depletion (%)')+ylim(0,max(forBAtot0$bio/forBAtot0$bio[1]*100))+
+     geom_hline(yintercept=40,col='dark grey')+
+     geom_vline(xintercept = end_current_period,col="blue",linetype=2)+ggtitle('single-area model')
+  ggplotly(p)
+  }
    })
 ```
 
@@ -280,12 +273,10 @@ renderPlotly({
   ##################### % DEPLETION (SUMMED OVER AREAS) ###################
   forBAtot <- ddply(na.exclude(Bioplot), .(Year,Model_run), 
                  function(x) data.frame(bio=sum(x$bio[x$Era=="TIME"|x$Era=="FORE"],na.rm=T)/1000))
-   # forBAtot <- ddply(na.exclude(Bioplot), .(Year), 
-  #                function(x) data.frame(bio=sum(x$bio[x$Era==5|x$Era==1])/1000))
-    forBAtot0<-forBAtot[which(forBAtot$bio>0),]
+     forBAtot0<-forBAtot[which(forBAtot$bio>0),]
   
   p <- ggplot(forBAtot0, aes(x=Year, y=bio/bio[1]*100,colour=Model_run))
-  p <- p+geom_line(stat="identity",size=1.3)+ylab('Depletion (%)')+ylim(0,max(forBAtot0$bio/forBAtot0$bio[1]*100))+
+  p <- p+geom_line(stat="identity")+ylab('Depletion (%)')+ylim(0,max(forBAtot0$bio/forBAtot0$bio[1]*100))+
      geom_hline(yintercept=40,col='dark grey')+
      geom_vline(xintercept = end_current_period,col="blue",linetype=2)
   ggplotly(p)
@@ -298,19 +289,26 @@ renderPlotly({
 ```{r}
 renderPlotly({
   SSBplot<-SSB_plot()
+   if(length(intersect(colnames(SSBplot),'Area'))>0){ 
   #################### SPAWNING STOCK BIOMASS BY AREA #####################
   forSSB <- ddply(na.exclude(SSBplot), .(Area,Year,Model_run),
                  function(x) data.frame(spbio=sum(x$spbio[x$Era=="TIME"]))) ### <--AEN: GLOBAL ATTRIBUTES FOR CHARACTERS!!!
-    # forSSB <- ddply(na.exclude(SSBplot), .(Area,Year),
-    #              function(x) data.frame(spbio=sum(x$spbio[x$Era==5])))
   zeros=which(forSSB$spbio>0)
   forSSB<-forSSB[zeros,]
 
   p <- ggplot(forSSB, aes(x=Year, y=spbio,colour=Model_run))
-  p <- p+geom_line(stat="identity",size=1.3)+facet_wrap(~Area, ncol=2)+ylab('Spawning Biomass (x1000 t)')
+  p <- p+geom_line(stat="identity")+facet_wrap(~Area, ncol=2)+ylab('Spawning Biomass (x1000 t)')
   ggplotly(p)
   ##########################################################################
+   }else{
+     forSSBtot <- ddply(na.exclude(SSBplot), .(Year,Model_run),
+                 function(x) data.frame(spbio=sum(x$spbio[x$Era=="TIME"]))) 
+  forSSBtot0<-forSSBtot[which(forSSBtot$spbio>0),]
   
+  p <- ggplot(forSSBtot0, aes(x=Year, y=spbio,colour=Model_run))
+  p <- p+geom_line(stat="identity")+ylab('Spawning Biomass (x1000 t)')+ggtitle('single-area model')
+  ggplotly(p)
+   }
 })
 ```
 
@@ -321,25 +319,18 @@ renderPlotly({
   ####################### SPAWNING STOCK BIOMASS ########################### 
   forSSBtot <- ddply(na.exclude(SSBplot), .(Year,Model_run),
                  function(x) data.frame(spbio=sum(x$spbio[x$Era=="TIME"]))) 
-  # forSSBtot <- ddply(na.exclude(SSBplot), .(Year),
-  #                 function(x) data.frame(spbio=sum(x$spbio[x$Era==5]))) 
   forSSBtot0<-forSSBtot[which(forSSBtot$spbio>0),]
   
   p <- ggplot(forSSBtot0, aes(x=Year, y=spbio,colour=Model_run))
-  p <- p+geom_line(stat="identity",size=1.3)+ylab('Spawning Biomass (x1000 t)')
+  p <- p+geom_line(stat="identity")+ylab('Spawning Biomass (x1000 t)')
   ggplotly(p)
   # ##########################################################################
-  
 })
 ```
 
 Fishing Mortality
 ===================================== 
-Column {.sidebar}
------------------------------------------------------------------------
 Compare observations against the predictions of selected SS3 model(s) for fishing mortality. 
-  
-**Please select your model/run(s) from the first page (CPUE).**
   
 
 Column {.tabset}
@@ -351,7 +342,7 @@ renderPlotly({
   FFMSYplot<-FFMSY_plot()
   ####################### FFMSY (SUMMED OVER AREAS) ###########################
    p <- ggplot(FFMSYplot, aes(x=Year, y=FFmsy,colour=Model_run))
-  p <- p+geom_line(stat="identity",size=1.3)+ylab('F/Fmsy')
+  p <- p+geom_line(stat="identity")+ylab('F/Fmsy')
   ggplotly(p)
   ##########################################################################
 })
@@ -360,35 +351,49 @@ renderPlotly({
 
 Recruitment
 ===================================== 
-Column {.sidebar}
------------------------------------------------------------------------
 Compare observations against the predictions of selected SS3 model(s) for recruitment deviation, recruitment (millions) by area, and summed over area  (millions). 
-  
-**Please select your model/run(s) from the first page (CPUE).**
   
 Column {.tabset}
 -----------------------------------------------------------------------
 
 ### Recruitment Deviation
 ```{r}
-renderPlot({
-  RecDevplot<-RecDev_plot()
+renderPlotly({
+  # RecDevplot<-RecDev_plot()
   xx <- rnorm(1000,0,0.2)
   x1 <- quantile(xx, 0.025)
   x2 <- quantile(xx, 0.975)
+
+  # ####################### RECRUITMENT DEVIATION ###########################
+  # plot(RecDevplot$Year, RecDevplot$value, type="l", lwd=2, xlab="Year", ylab="Rec dev", ylim=c(min(x1,RecDevplot$value,na.rm=T),max(x2,RecDevplot$value,na.rm=TRUE)), xaxt ="n")
+  # 
+  # # polygon(c(RecDevplot$Year, rev(RecDevplot$Year)), c(RecDevplot$uci, rev(RecDevplot$lci)), border=NA, col="light grey" )
+  # 
+  # lines(RecDevplot$Year, RecDevplot$value, lwd=2)
+  # axis(1, at=seq(min(RecDevplot$Year),max(RecDevplot$Year),5))
+  # lines(range(RecDevplot$Year), rep(0,2), lty=3)
+  # lines(range(RecDevplot$Year), rep(x1,2), lty=4, col="blue")
+  # lines(range(RecDevplot$Year), rep(x2,2), lty=4, col="blue")
+  # ##########################################################################
+  # 
+  # 
   
-  
-  ####################### RECRUITMENT DEVIATION ###########################
-  plot(RecDevplot$Year, RecDevplot$value, type="l", lwd=2, xlab="Year", ylab="Rec dev", ylim=c(min(x1,RecDevplot$value,na.rm=T),max(x2,RecDevplot$value,na.rm=TRUE)), xaxt ="n")
-  
-  polygon(c(RecDevplot$Year, rev(RecDevplot$Year)), c(RecDevplot$uci, rev(RecDevplot$lci)), border=NA, col="light grey" )
-  
-  lines(RecDevplot$Year, RecDevplot$value, lwd=2)
-  axis(1, at=seq(min(RecDevplot$Year),max(RecDevplot$Year),5))
-  lines(range(RecDevplot$Year), rep(0,2), lty=3)
-  lines(range(RecDevplot$Year), rep(x1,2), lty=4, col="blue")
-  lines(range(RecDevplot$Year), rep(x2,2), lty=4, col="blue")
+   RecDevplot<-RecDev_plot()
+  ####################### RECRUITMENT (SUMMED OVER AREAS) ###########################
+  forRecDev <- ddply(na.exclude(RecDevplot), .(Year,Model_run),
+                 function(x) data.frame(value=sum(x$value))) 
+  # zeros=which(forRecDev$rec0>0)
+  # forRecDev<-forRecDev[zeros,]
+
+  p <- ggplot(forRecDev, aes(x=Year, y=value,colour=Model_run))
+  p <- p+geom_line(stat="identity")+ylab('Recruitment deviation')+
+     geom_hline(yintercept=x1,col='blue')+
+     geom_hline(yintercept=x2,col='blue')+
+     geom_hline(yintercept=0,col='blue')
+  ggplotly(p)
   ##########################################################################
+
+  
 })
 ```
 
@@ -396,18 +401,27 @@ renderPlot({
 ```{r}
 renderPlotly({
   R0plot<-R0_plot()
+  if(length(intersect(colnames(R0plot),'Area'))>0){ 
   ####################### RECRUITMENT BY AREA ###########################
   forR0 <- ddply(na.exclude(R0plot), .(Area,Year,Model_run),
                  function(x) data.frame(rec0=sum(x$rec0[x$Era=="TIME"]))) ### <--AEN: GLOBAL ATTRIBUTES FOR CHARACTERS!!!
-    # forR0 <- ddply(na.exclude(R0plot), .(Area,Year),
-    #              function(x) data.frame(rec0=sum(x$rec0[x$Era==5])))
   zeros=which(forR0$rec0>0)
   forR0<-forR0[zeros,]
 
   p <- ggplot(forR0, aes(x=Year, y=rec0,colour=Model_run))
-  p <- p+geom_line(stat="identity",size=1.3)+facet_wrap(~Area, ncol=2)+ylab('Recruit 0 (millions)')
+  p <- p+geom_line(stat="identity")+facet_wrap(~Area, ncol=2)+ylab('Recruit 0 (millions)')
   ggplotly(p)
   ##########################################################################
+  }else{
+    forR0 <- ddply(na.exclude(R0plot), .(Year,Model_run),
+                 function(x) data.frame(rec0=sum(x$rec0[x$Era=="TIME"]))) ### <--AEN: GLOBAL ATTRIBUTES FOR CHARACTERS!!!
+  zeros=which(forR0$rec0>0)
+  forR0<-forR0[zeros,]
+
+  p <- ggplot(forR0, aes(x=Year, y=rec0,colour=Model_run))
+  p <- p+geom_line(stat="identity")+ylab('Recruit 0 (millions)')+ggtitle('single-area model')
+  ggplotly(p)
+  }
 })
 ```
 
@@ -418,13 +432,11 @@ renderPlotly({
   ####################### RECRUITMENT (SUMMED OVER AREAS) ###########################
   forR0 <- ddply(na.exclude(R0plot), .(Year,Model_run),
                  function(x) data.frame(rec0=sum(x$rec0[x$Era=="TIME"]))) ### <--AEN: GLOBAL ATTRIBUTES FOR CHARACTERS!!!
-    # forR0 <- ddply(na.exclude(R0plot), .(Year),
-    #              function(x) data.frame(rec0=sum(x$rec0[x$Era==5])))
   zeros=which(forR0$rec0>0)
   forR0<-forR0[zeros,]
 
   p <- ggplot(forR0, aes(x=Year, y=rec0,colour=Model_run))
-  p <- p+geom_line(stat="identity",size=1.3)+ylab('Recruit 0 (millions)')
+  p <- p+geom_line(stat="identity")+ylab('Recruit 0 (millions)')
   ggplotly(p)
   ##########################################################################
 })
@@ -432,11 +444,8 @@ renderPlotly({
 
 Selectivity
 ===================================== 
-Column {.sidebar}
------------------------------------------------------------------------
 Size and age selectivity. Size selectivity by fleet defined as "Lsel" (cm)  in the latest year of the assessment.
 
-**Please select your model/run(s) from the first page (CPUE).**
 
 Column {.tabset}
 -----------------------------------------------------------------------
@@ -450,9 +459,25 @@ renderPlotly({
   }else{forSize <- ddply(na.exclude(Sselplot), .(Fleet,Size,Model_run),
                  function(x) data.frame(x[x$Factor=="Lsel" & x$Year==x$endyr,]))}
   p <- ggplot(forSize, aes(x=Size, y=sel,colour=Model_run))
-p <- p+geom_line(stat="identity",size=1.3)+facet_wrap(~Fleet, ncol=5, scales="free")+xlab('Length (cm)')+ylab('Proportion')#+
+p <- p+geom_line(stat="identity")+facet_wrap(~Fleet, ncol=5, scales="free")+xlab('Length (cm)')+ylab('Proportion')#+
 ggplotly(p)
   ##########################################################################
 })
 ```
 
+### Age Selectivity
+```{r}
+renderPlotly({
+  Aselplot<-Asel_plot()
+  req(!is.null(Aselplot))
+  ####################### SIZE SELECTIVITY BY FLEET ###########################
+  if(length(grep('Gender',colnames(Aselplot)))>0){ forAge <- ddply(na.exclude(Aselplot), .(Fleet,Age,Model_run),
+                 function(x) data.frame(x[x$Gender==1 & x$Factor=="Asel" & x$Year==x$endyr,]))
+  }else{forAge <- ddply(na.exclude(Aselplot), .(Fleet,Age,Model_run),
+                 function(x) data.frame(x[x$Factor=="Asel" & x$Year==x$endyr,]))}
+  p <- ggplot(forAge, aes(x=Age, y=sel,colour=Model_run))
+p <- p+geom_line(stat="identity")+facet_wrap(~Fleet, ncol=5, scales="free")+xlab('Length (cm)')+ylab('Proportion')#+
+ggplotly(p)
+  ##########################################################################
+})
+```

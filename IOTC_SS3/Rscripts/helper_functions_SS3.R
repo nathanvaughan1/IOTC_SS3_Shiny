@@ -1,42 +1,46 @@
-## helper_functions_SS3.R
+## helper_functions_SS3_standard.R
 ## Anne-Elise Nieblas (adapted from helper_functions.R by Sylvain Bonhommeau)
 ## 6/10/2017
-## DESCRIPTION: This script is read by app.R for the IOTC_SS3 shiny. It loads the ss3 .nc model outputs, 
+## DESCRIPTION: This script is read by the ss3_dashboard_standard.Rmd for the IOTC_SS3 shiny. It loads the ss3 .nc model outputs, 
 ## melts the .nc arrays into data frames, adds/calculates new variables and assigns colnames.
 ## INPUTS: model, run, dir_save (where to find the .nc files)
 ## OUTPUTS: CPUE data frame (Fleet, Year, Exp, Obs,Dev,StDev);
 ##          LEN  data frame (Fleet, Year, Bin, Exp, Obs)
 ##          
-## AEN TO DO:
-## IMPROVEMENTS: Have to have different functions ?- can put more of them together to load data less often?
-##               Not all dimensions are necessarily accounted for in column naming, e.g., SEASON!
 
-
-
-# paste(dirData,'data_ss324_',input$Model,'_',input$Run,'.nc',sep='')
-
-
+########################################## CPUE DATA ######################################################
 for_ncCPUE <- function(x, dir_save){
   nc            <-nc_open(paste(dir_save,x, sep=""))
   exp           <-ncvar_get(nc,'Exp_cpue')
   
-  dims          <-list(nc$dim$fleet$vals,nc$dim$year$vals,nc$dim$season$vals)
+  ## replace fleet ids by fleet names for dimnames
+  globatt      <-ncatt_get(nc,0)
+  if(length(nc$dim$fleet$vals)==length(unlist(strsplit(globatt$abundance_index_id,', ')))){
+    fleetnames <- unlist(strsplit(globatt$abundance_index_names,', '))
+  }else{
+    fleetnames <- c(unlist(strsplit(globatt$abundance_index_names,', ')),'NA')
+  }
+  
+  dims          <-list(fleetnames,nc$dim$year$vals,nc$dim$season$vals)
   coldims       <-c('Fleet','Year','Season')
+  
+  ## check for singleton dimensions
   dr            <-NULL
   for(d in 1:length(dims)){if(length(dims[[d]])==1){dr=c(dr,d)}}
   dims[dr]      <-NULL
   if(length(dr)>0){coldims       <-coldims[-dr]}
   dimnames(exp) <-dims
   
-  CPUE          <-melt(exp)
+  Exp          <-melt(exp)
   obs           <-ncvar_get(nc,'Obs_cpue')
   Obs           <-melt(obs)
-  Dev           <-Obs$value-CPUE$value
+  Dev           <-Obs$value-Exp$value
   stDev         <-Dev/sd(Dev,na.rm=T)
-  CPUE          <-cbind(CPUE,Obs$value,Dev,stDev)
+  CPUE          <-cbind(Exp,Obs$value,Dev,stDev)
   
   colnames(CPUE)<-c(coldims,'Exp','Obs','Dev','stDev')
   CPUE_data     <- CPUE
+  
   return(CPUE_data)
 }
 
@@ -49,12 +53,22 @@ read_CPUE_data <- function(model,run, dir_save){
   return(CPUE_data)
 }
 
+########################################## LENGTH DATA ######################################################
 for_ncLEN <- function(x, dir_save){
   nc           <-nc_open(paste(dir_save,x, sep=""))
   Lobs         <-ncvar_get(nc,'Obs_len')
+  globatt      <-ncatt_get(nc,0)
   
-  dims         <-list(nc$dim$fleet$vals,nc$dim$year$vals,nc$dim$season$vals,nc$dim$lenbin$vals)
-  coldims      <-c('Fleet','Year','Season','Bin')
+  # replacing fleet ids by fleetnames for dimnames of resulting data frame.
+  if(length(nc$dim$fleet$vals)==length(unlist(strsplit(globatt$abundance_index_id,', ')))){
+    fleetnames <- unlist(strsplit(globatt$abundance_index_names,', '))
+  }else{
+    fleetnames <- c(unlist(strsplit(globatt$abundance_index_names,', ')),'NA')
+  }
+  dims         <-list(fleetnames,nc$dim$year$vals,nc$dim$season$vals,nc$dim$part$vals,nc$dim$lenbin$vals)
+  coldims      <-c('Fleet','Year','Season','Part','Bin')
+  
+  # checking for singleton dimensions
   dr           <-NULL
   for(d in 1:length(dims)){if(length(dims[[d]])==1){dr=c(dr,d)}}
   dims[dr]    <-NULL
@@ -80,12 +94,14 @@ read_LEN_data <- function(model,run, dir_save){
   return(LEN_data)
 }
 
-
+##################################### RECRUITMENT DEVIATION DATA #################################################
 for_ncRecDev  <- function(x, dir_save){
   nc          <-nc_open(paste(dir_save,x, sep=""))
   RD_val      <-ncvar_get(nc,'RecDev_val')
   
   dims        <-list(nc$dim$year$vals)
+  
+  ## checking for singleton dimensions
   dr          <-NULL
   for(d in 1:length(dims)){if(length(dims[[d]])==1){dr=c(dr,d)}}
   dims[dr]    <-NULL
@@ -115,7 +131,7 @@ read_RecDev_data <- function(model,run, dir_save){
   return(RecDev_data)
 }
 
-
+########################################## RECRUIT DATA ######################################################
 for_ncR0 <- function(x, dir_save){
   nc          <-nc_open(paste(dir_save,x, sep=""))
   R0<-ncvar_get(nc,'Recruit_0')
@@ -129,6 +145,8 @@ for_ncR0 <- function(x, dir_save){
   
   dims        <-list(nc$dim$area$vals,nc$dim$year$vals,nc$dim$season$vals,era.vals)
   coldims     <-c('Area','Year','Season','Era')
+  
+  # check for singleton dimensions
   dr          <-NULL
   for(d in 1:length(dims)){if(length(dims[[d]])==1){dr=c(dr,d)}}
   dims[dr]    <-NULL
@@ -151,6 +169,7 @@ read_R0_data <- function(model,run, dir_save){
   return(R0_data)
 }
 
+########################################## SSB DATA ######################################################
 for_ncSSB <- function(x, dir_save){
   nc          <- nc_open(paste(dir_save,x, sep=""))
   SSB         <- ncvar_get(nc,'SpawnBio')
@@ -163,6 +182,8 @@ for_ncSSB <- function(x, dir_save){
   
   dims        <- list(nc$dim$area$vals,nc$dim$year$vals,nc$dim$season$vals,era.vals)
   coldims     <- c('Area','Year','Season','Era')
+  
+  # check for singleton dimensions
   dr          <- NULL
   for(d in 1:length(dims)){if(length(dims[[d]])==1){dr=c(dr,d)}}
   dims[dr]    <- NULL
@@ -185,6 +206,7 @@ read_SSB_data <- function(model,run, dir_save){
   return(SSB_data)
 }
 
+########################################## BIOMASS DATA ######################################################
 for_ncBio <- function(x, dir_save){
   nc          <- nc_open(paste(dir_save,x, sep=""))
   Bioall      <- ncvar_get(nc,'Bio_all_ts')
@@ -195,10 +217,10 @@ for_ncBio <- function(x, dir_save){
   xx.vals=strsplit(xx.val[[1:length(xx.val)]],':')
   era.vals<-NULL
   for(x in 1:length(xx.vals)){era.vals=c(era.vals,xx.vals[[x]][2])}
-  
-  
   dims        <- list(nc$dim$area$vals,nc$dim$year$vals,nc$dim$season$vals,era.vals)
   coldims     <- c('Area','Year','Season','Era')
+  
+  # check for singleton dimensions
   dr          <- NULL
   for(d in 1:length(dims)){if(length(dims[[d]])==1){dr=c(dr,d)}}
   dims[dr]    <- NULL
@@ -220,11 +242,16 @@ read_Bio_data <- function(model,run, dir_save){
   return(Bio_data)
 }
 
+
+
+########################################## FFMSY DATA ######################################################
 for_ncffmsy <- function(x, dir_save){
   nc          <- nc_open(paste(dir_save,x, sep=""))
   FFmsy       <- ncvar_get(nc,'FFmsy')
   
   dims        <- list(nc$dim$year$vals)
+  
+  # check for singleton dimensions
   dr          <- NULL
   for(d in 1:length(dims)){if(length(dims[[d]])==1){dr=c(dr,d)}}
   dims[dr]    <- NULL
@@ -246,11 +273,13 @@ read_ffmsy_data <- function(model,run, dir_save){
   return(ffmsy_data)
 }
 
+#################################### SIZE SELECTIVITY DATA ################################################
 for_ncSsel <- function(x, dir_save){
   nc          <- nc_open(paste(dir_save,x, sep=""))
   Ssel        <- ncvar_get(nc,'sizeselex')
-  end_yr        <- ncatt_get(nc,0)
-  end_yr<-end_yr$model_end_year
+
+  globatt  <- ncatt_get(nc,0)
+  end_yr   <- globatt$time_coverage_end
   
   ## MUST PARSE UNITS STRING INTO VALUES
   xx=nc$dim$size_factor$units
@@ -259,7 +288,13 @@ for_ncSsel <- function(x, dir_save){
   size_vals<-NULL
   for(x in 1:length(xx.vals)){size_vals=c(size_vals,xx.vals[[x]][2])}
   
-  dims        <- list(nc$dim$fleet$vals,nc$dim$year$vals,nc$dim$gender$vals,size_vals,nc$dim$sizeselex_size$vals)
+  # replacing fleet ids by fleet names for dimnames of resulting data frame.
+  if(length(nc$dim$fleet$vals)==length(unlist(strsplit(globatt$abundance_index_id,', ')))){
+    fleetnames <- unlist(strsplit(globatt$abundance_index_names,', '))
+  }else{
+    fleetnames <- c(unlist(strsplit(globatt$abundance_index_names,', ')),'NA')
+  }
+  dims        <- list(fleetnames,nc$dim$year$vals,nc$dim$gender$vals,size_vals,nc$dim$sizeselex_size$vals)
   coldims     <- c('Fleet','Year','Gender','Factor','Size')
   dr          <- NULL
   for(d in 1:length(dims)){if(length(dims[[d]])==1){dr=c(dr,d)}}
@@ -283,37 +318,49 @@ read_Ssel_data <- function(model,run, dir_save){
   return(Ssel_data)
 }
 
-
-
-######## sylvain's scripts ###########
-for_data <- function(x, dir_save){
-  load(paste(dir_save,x, sep=""))
-  data_plot <- outputs_VPA$main
-  data_plot$variable <- as.character(data_plot$variable)
-  iwh2 <- which(is.na(data_plot$variable))
-  if (length(iwh2)>0){data_plot$variable[iwh2] <- "Fplusgroup"} ## small patch due to data import for first get_runs_data function
-  return(data_plot)
+### AGE SELECTIVITY
+for_ncasel <- function(x, dir_save){
+  nc          <- nc_open(paste(dir_save,x, sep=""))
+  asel        <- ncvar_get(nc,'ageselex')
+  
+  globatt  <- ncatt_get(nc,0)
+  end_yr   <- globatt$time_coverage_end
+  
+  ## MUST PARSE UNITS STRING INTO VALUES
+  xx=nc$dim$age_factor$units
+  xx.val=strsplit(xx,' ')
+  xx.vals=strsplit(xx.val[[1:length(xx.val)]],':')
+  age_vals<-NULL
+  for(x in 1:length(xx.vals)){age_vals=c(age_vals,xx.vals[[x]][2])}
+  
+  # replacing fleet ids by fleet names for dimnames of resulting data frame.
+  if(length(nc$dim$fleet$vals)==length(unlist(strsplit(globatt$abundance_index_id,', ')))){
+    fleetnames <- unlist(strsplit(globatt$abundance_index_names,', '))
+  }else{
+    fleetnames <- c(unlist(strsplit(globatt$abundance_index_names,', ')),'NA')
+  }
+  dims        <- list(fleetnames,nc$dim$year$vals,nc$dim$season$vals,nc$dim$gender$vals,nc$dim$morph$vals,age_vals,nc$dim$age$vals)
+  coldims     <- c('Fleet','Year','Season','Gender','Morph','Factor','Age')
+  dr          <- NULL
+  for(d in 1:length(dims)){if(length(dims[[d]])==1){dr=c(dr,d)}}
+  dims[dr]    <- NULL
+  if(length(dr)>0){coldims     <- coldims[-dr]}
+  dimnames(asel)<-dims
+  
+  agesel        <- melt(asel)
+  agesel$endyr  <- end_yr
+  colnames(agesel)<-c(coldims,'sel','endyr')
+  Asel_data   <- agesel
+  return(Asel_data)
 }
 
-read_data <- function(run, seed_nb, dir_save){
-  comb_run  <- expand.grid(run=run, seed_nb=seed_nb)
-  data_runs <- cbind(File=paste("data_retro_", comb_run$run, "_", comb_run$seed_nb, ".Rdata", sep=""), comb_run)
-  run_name  <- paste(run)
-  seed_nb   <- paste(seed_nb)
-  Run_seed  <- paste(run, seed_nb)
-  data_plot <- ddply(data_runs, .(File), function(x) data.frame(Run_seed=paste(x$run, x$seed_nb),ldply(lapply(x$File, for_data, dir_save))))[,-1]
-  return(data_plot)
-}
-
-
-plot_output_VPA <- function(data_runs, vari){
-  data_sub <- data_runs[data_runs$variable==vari,]
-  #paste(runs_id$path)
-  h1 <- hPlot(value ~ Year , data = data_sub, type = "line", group = "Run_seed")
-  h1$addParams(dom = vari)
-  h1$chart(zoomType = "xy")
-  #h1$save('essai.html', standalone=TRUE)
-  return(h1)
+read_Asel_data <- function(model,run, dir_save){
+  comb_run    <- expand.grid(model=model,run=run)
+  data_runs   <- cbind(File=paste("data_ss324_", comb_run$model,"_", comb_run$run, ".nc", sep=""), comb_run)
+  run_name    <- paste(run)
+  Model_run   <- paste(model,run)
+  Asel_data   <- ddply(data_runs, .(File), function(x) data.frame(Model_run=paste(x$model, x$run),ldply(lapply(x$File, for_ncasel, dir_save))))[,-1]
+  return(Asel_data)
 }
 
 # ##### RELOADS UPDATED ss3.24.R to INFRASTRUCTURE ####
